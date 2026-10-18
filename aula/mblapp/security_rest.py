@@ -1,8 +1,24 @@
 # This Python file uses the following encoding: utf-8
 from __future__ import unicode_literals
 
+from rest_framework import exceptions
 from rest_framework import permissions
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+
 from aula.apps.alumnes.models import Alumne
+
+
+class CustomJWTAuthentication(JWTAuthentication):
+    """Retorna un JSON per l'error 401 si el token JWT no és vàlid o està caducat."""
+
+    def authenticate(self, request):
+        try:
+            return super().authenticate(request)
+        except (InvalidToken, TokenError):
+            raise exceptions.AuthenticationFailed(
+                {"error": ["Token invàlid o caducat"]}
+            )
 
 
 class EsUsuariDeLaAPI(permissions.BasePermission):
@@ -11,18 +27,26 @@ class EsUsuariDeLaAPI(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        alumne_id = view.kwargs.get('alumne_id')
-        # comprovar si l'alumne pertany al responsable
-        alumnes_del_responsable = request.user.responsable.alumnes_associats.values_list('id', flat=True)
-        alumne_pertany_a_responsable = alumne_id is not None and int(alumne_id) in alumnes_del_responsable
-        
-        #comprovar si l'alumne és major de 18 anys
-        alumne = Alumne.objects.get(id=alumne_id) if alumne_id else None
-        edad = alumne.edat() if alumne else None
-        alumne_es_major_de_18 = edad is not None and edad >= 18
-        
-        return (
-            bool(request.user)
-            and request.user.is_authenticated
-            and (alumne_pertany_a_responsable or alumne_es_major_de_18)
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+
+        alumne_id = view.kwargs.get("alumne_id")
+        if not alumne_id:
+            return False
+
+        try:
+            alumne = Alumne.objects.get(id=int(alumne_id))
+        except (TypeError, ValueError, Alumne.DoesNotExist):
+            return False
+
+        responsable = getattr(user, "responsable", None)
+        alumne_pertany_a_responsable = (
+            bool(responsable)
+            and responsable.alumnes_associats.filter(id=alumne.id).exists()
         )
+
+        edad = alumne.edat()
+        alumne_es_major_de_18 = edad is not None and edad >= 18
+
+        return alumne_pertany_a_responsable or alumne_es_major_de_18
