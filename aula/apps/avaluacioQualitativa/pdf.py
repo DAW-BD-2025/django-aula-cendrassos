@@ -205,4 +205,9 @@ def genera_pdf_qualitativa(alumne, request=None):
 
     buf.seek(0)
     filename = "qualitativa-{0}.pdf".format(slugify(unicode(alumne)) or alumne.pk)
-    return FileResponse(buf, as_attachment=True, filename=filename)
+    return FileResponse(
+        buf,
+        as_attachment=True,
+        filename=filename,
+        content_type="application/pdf",
+    )

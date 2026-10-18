@@ -4,7 +4,12 @@ from __future__ import unicode_literals
 from datetime import date, datetime
 
 from rest_framework import serializers
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+    renderer_classes,
+)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
@@ -17,7 +22,11 @@ from aula.apps.sortides.models import (
     Sortida,
     SortidaPagament,
 )
-from aula.mblapp.security_rest import EsUsuariDeLaAPI
+from aula.mblapp.renderers import PDFPassthroughRenderer
+from aula.mblapp.security_rest import (
+    CustomJWTAuthentication,
+    EsUsuariDeLaAPI,
+)
 from aula.utils.tools import unicode
 from aula.apps.usuaris.tools import getRol
 
@@ -326,7 +335,9 @@ def alumnes_dades(request, format=None, alumne_id=None):
 
 
 @api_view(["GET"])
+@authentication_classes((CustomJWTAuthentication,))
 @permission_classes((EsUsuariDeLaAPI,))
+@renderer_classes((PDFPassthroughRenderer,))
 def qualitativa_pdf(request, format=None, alumne_id=None):
     professor, responsable, alumne = getRol(request.user, request)
     alumne = obte_alumne_o_error(alumne_id)
@@ -336,6 +347,7 @@ def qualitativa_pdf(request, format=None, alumne_id=None):
 
 
 @api_view(["GET"])
+@authentication_classes((CustomJWTAuthentication,))
 @permission_classes((EsUsuariDeLaAPI,))
 def qualitativa_visible(request, format=None, alumne_id=None):
     professor, responsable, alumne = getRol(request.user, request)
