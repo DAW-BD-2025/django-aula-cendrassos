@@ -140,6 +140,7 @@ def sincronitza(f, user=None):
         a.altres_telefons = ""
         r1 = {}
         r2 = {}
+        correu_excel = ""
         for index, cell in enumerate(row):
             if bool(cell) and bool(cell.value) and isinstance(cell.value, str):
                 cell.value = cell.value.strip()
@@ -172,7 +173,8 @@ def sincronitza(f, user=None):
                         }
                     trobatGrupClasse = True
                 if col_indexs[index].endswith("Correu electrònic"):
-                    a.correu = unicode(cell.value) if cell.value else ""
+                    correu_excel = unicode(cell.value) if cell.value else ""
+                    a.correu = correu_excel
                 if col_indexs[index].endswith("Data naixement"):
                     try:
                         data = unicode(cell.value).split(" ")[0]
@@ -366,6 +368,20 @@ def sincronitza(f, user=None):
             a.nom_sentit = alumneDadesAnteriors.nom_sentit
             a.estat_sincronitzacio = "S-U"
             info_nAlumnesModificats += 1
+
+            te_responsables_amb_correu = alumneDadesAnteriors.responsables.filter(
+                (Q(correu_relacio_familia__isnull=False) & ~Q(correu_relacio_familia__exact=""))
+                | (Q(correu__isnull=False) & ~Q(correu__exact=""))
+            ).exists()
+
+            if (
+                not correu_excel
+                and alumneDadesAnteriors.edat() >= 18
+                and not te_responsables_amb_correu
+            ):
+                a.correu = alumneDadesAnteriors.correu or ""
+            else:
+                a.correu = correu_excel
 
             # En cas que l'alumne pertanyi a un dels grups parametritzat com a estàtic,
             # no se li canviarà de grup en les importacions d'Esfer@.
